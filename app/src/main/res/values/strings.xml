@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Gonzalez_VictorIMDbAPP</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_home">Top 10</string>
+    <string name="menu_gallery">Favoritas</string>
+    <string name="menu_slideshow">Buscar Película</string>
+    <string name="default_web_client_id">358877077053-g2be1dn06ahgve8j3cst769582odpkmv.apps.googleusercontent.com</string>
+</resources>
