@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.pmdm.gonzalez_victorimdbapp.IMDBApiClient;
 import edu.pmdm.gonzalez_victorimdbapp.R;
 import edu.pmdm.gonzalez_victorimdbapp.adapter.MovieAdapter;
 import edu.pmdm.gonzalez_victorimdbapp.api.IMDBApiService;
@@ -37,8 +38,6 @@ public class HomeFragment extends Fragment {
     private RecyclerView recyclerView;
     private MovieAdapter movieAdapter;
     private List<Movie> movieList = new ArrayList<>();
-    private static final String API_KEY = "55d85b5f3cmsh4613c645ec2f533p1989bajsna5fafe7facca";
-    private static final String API_HOST = "imdb-com.p.rapidapi.com";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -66,14 +65,13 @@ public class HomeFragment extends Fragment {
      * Limita los resultados a los primeros 10 elementos y actualiza la lista de películas y el RecyclerView.
      */
     private void fetchMovies() {
+        IMDBApiService apiService = IMDBApiClient.getApiService();
 
-        IMDBApiService apiService = new Retrofit.Builder()
-                .baseUrl("https://imdb-com.p.rapidapi.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(IMDBApiService.class);
-
-        Call<PopularMoviesResponse> call = apiService.getTopMeter(API_KEY, API_HOST, "ALL");
+        Call<PopularMoviesResponse> call = apiService.getTopMeter(
+                IMDBApiClient.getApiKey(), // Obtén la clave actual desde el gestor de claves
+                "imdb-com.p.rapidapi.com",
+                "ALL"
+        );
 
         call.enqueue(new Callback<PopularMoviesResponse>() {
             @Override
@@ -105,6 +103,9 @@ public class HomeFragment extends Fragment {
 
                     // Notificar al adaptador para actualizar el RecyclerView
                     movieAdapter.notifyDataSetChanged();
+                } else if (response.code() == 429) { // Código HTTP 429: Límite de llamadas excedido
+                    IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
+                    fetchMovies(); // Reintenta la solicitud con la nueva clave
                 } else {
                     Log.e("API_ERROR", "Respuesta no exitosa: " + response.code());
                 }

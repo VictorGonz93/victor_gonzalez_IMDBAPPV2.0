@@ -58,4 +58,5 @@ dependencies {
     implementation(libs.retrofit.gson)
     implementation(libs.gson)
     implementation(libs.picasso)
+    implementation(libs.facebook.login)
 }

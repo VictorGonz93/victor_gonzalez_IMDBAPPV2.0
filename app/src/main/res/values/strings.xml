@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Gonzalez_VictorIMDbAPP</string>
+    <string name="app_name">Gonzalez_VictorIMDbAPPV2.0</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="nav_header_title">Android Studio</string>
@@ -11,4 +11,6 @@
     <string name="menu_gallery">Favoritas</string>
     <string name="menu_slideshow">Buscar Película</string>
     <string name="default_web_client_id">358877077053-g2be1dn06ahgve8j3cst769582odpkmv.apps.googleusercontent.com</string>
+    <string name="facebook_app_id">1720468142019029</string>
+    <string name="facebook_client_token">58b6e0bcd5ee78c8fe35c3b626a31824</string>
 </resources>

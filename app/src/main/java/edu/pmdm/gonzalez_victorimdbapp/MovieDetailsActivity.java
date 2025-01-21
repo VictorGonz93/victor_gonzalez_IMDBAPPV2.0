@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -43,9 +44,6 @@ public class MovieDetailsActivity extends AppCompatActivity {
     private Button btnSendSms;
     private ImageView movieImageView;
     private TextView movieTitleTextView, moviePlotTextView, movieRatingTextView, movieReleaseDateTextView;
-
-    private static final String API_KEY = "55d85b5f3cmsh4613c645ec2f533p1989bajsna5fafe7facca";
-    private static final String API_HOST = "imdb-com.p.rapidapi.com";
 
     private Movie selectedMovie; // Almacena la película seleccionada
 
@@ -127,13 +125,13 @@ public class MovieDetailsActivity extends AppCompatActivity {
      * @param movieId ID de la película en IMDB.
      */
     private void fetchMovieDetailsFromAPI(String movieId) {
-        IMDBApiService apiService = new Retrofit.Builder()
-                .baseUrl("https://imdb-com.p.rapidapi.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(IMDBApiService.class);
+        IMDBApiService apiService = IMDBApiClient.getApiService();
 
-        Call<MovieOverviewResponse> call = apiService.getOverview(API_KEY, API_HOST, movieId);
+        Call<MovieOverviewResponse> call = apiService.getOverview(
+                IMDBApiClient.getApiKey(), // Obtén la clave actual desde el gestor de claves
+                "imdb-com.p.rapidapi.com",
+                movieId
+        );
 
         call.enqueue(new Callback<MovieOverviewResponse>() {
             @Override
@@ -143,30 +141,32 @@ public class MovieDetailsActivity extends AppCompatActivity {
                     updateUIWithDetails(data);
 
                     // Actualizar el objeto Movie con rating y descripción
-                    if (selectedMovie != null) {
-                        if (data.getTitle() != null) {
-                            // Rating
-                            MovieOverviewResponse.RatingsSummary ratings = data.getTitle().getRatingsSummary();
-                            if (ratings != null) {
-                                selectedMovie.setRating(String.valueOf(ratings.getAggregateRating()));
-                            }
+                    if (selectedMovie != null && data.getTitle() != null) {
+                        MovieOverviewResponse.RatingsSummary ratings = data.getTitle().getRatingsSummary();
+                        if (ratings != null) {
+                            selectedMovie.setRating(String.valueOf(ratings.getAggregateRating()));
+                        }
 
-                            // Descripción (plot)
-                            MovieOverviewResponse.Plot plot = data.getTitle().getPlot();
-                            if (plot != null && plot.getPlotText() != null) {
-                                selectedMovie.setOverview(plot.getPlotText().getPlainText());
-                            }
+                        MovieOverviewResponse.Plot plot = data.getTitle().getPlot();
+                        if (plot != null && plot.getPlotText() != null) {
+                            selectedMovie.setOverview(plot.getPlotText().getPlainText());
                         }
                     }
+                } else if (response.code() == 429) { // Código HTTP 429: Límite de llamadas excedido
+                    IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
+                    fetchMovieDetailsFromAPI(movieId); // Reintenta la solicitud con la nueva clave
+                } else {
+                    Log.e("API_ERROR", "Error en la respuesta: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(Call<MovieOverviewResponse> call, Throwable t) {
-                t.printStackTrace();
+                Log.e("API_ERROR", "Error en la llamada a la API", t);
             }
         });
     }
+
 
     /**
      * Actualiza las vistas con los detalles obtenidos desde la API de IMDB.

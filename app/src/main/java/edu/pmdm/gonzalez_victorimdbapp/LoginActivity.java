@@ -4,6 +4,43 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
+import android.widget.Toast;
+
+import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import com.facebook.AccessToken;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.FacebookSdk;
+import com.facebook.GraphRequest;
+import com.facebook.appevents.AppEventsLogger;
+import com.facebook.login.LoginBehavior;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FacebookAuthProvider;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
+import android.widget.ImageView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -23,6 +60,11 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+
+import org.json.JSONException;
+
+import java.util.Arrays;
+
 /**
  * Clase LoginActivity.
  * Maneja el inicio de sesión de los usuarios mediante Google Sign-In y Firebase Authentication.
@@ -34,6 +76,7 @@ import com.google.firebase.auth.GoogleAuthProvider;
 public class LoginActivity extends AppCompatActivity {
 
     private FirebaseAuth firebaseAuth;
+    private CallbackManager callbackManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +120,39 @@ public class LoginActivity extends AppCompatActivity {
             Intent signInIntent = GoogleSignIn.getClient(this, gso).getSignInIntent();
             signInLauncher.launch(signInIntent);
         });
+
+        // Configurar CallbackManager de Facebook
+        callbackManager = CallbackManager.Factory.create();
+
+        // Configurar LoginButton de Facebook
+        LoginButton loginButton = findViewById(R.id.btnFacebook);
+        loginButton.setPermissions(Arrays.asList("public_profile", "email"));
+
+        // Registrar la devolución de llamada para el botón
+        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+                // Manejar el token de Facebook y autenticar con Firebase
+                handleFacebookAccessToken(loginResult.getAccessToken());
+            }
+
+            @Override
+            public void onCancel() {
+                Toast.makeText(LoginActivity.this, "Inicio de sesión cancelado", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(FacebookException exception) {
+                Toast.makeText(LoginActivity.this, "Error al iniciar sesión con Facebook", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Verificar el estado de sesión al iniciar la actividad
+        AccessToken accessToken = AccessToken.getCurrentAccessToken();
+        boolean isLoggedIn = accessToken != null && !accessToken.isExpired();
+        if (isLoggedIn) {
+            handleFacebookAccessToken(accessToken);
+        }
     }
 
     /**
@@ -97,6 +173,61 @@ public class LoginActivity extends AppCompatActivity {
                 }
             }
     );
+
+    /**
+     * Manejar el token de acceso de Facebook para autenticar con Firebase y obtener datos adicionales.
+     *
+     * @param token Token de acceso de Facebook.
+     */
+    private void handleFacebookAccessToken(AccessToken token) {
+        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
+        firebaseAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Inicio de sesión exitoso, obtener datos del usuario de Facebook
+                        FirebaseUser user = firebaseAuth.getCurrentUser();
+                        fetchFacebookUserProfile(token);
+                    } else {
+                        // Si el inicio de sesión falla, mostrar mensaje
+                        Toast.makeText(LoginActivity.this, "Error al autenticar con Firebase", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    /**
+     * Obtiene el perfil del usuario de Facebook utilizando Graph API.
+     *
+     * @param token Token de acceso de Facebook.
+     */
+    private void fetchFacebookUserProfile(AccessToken token) {
+        GraphRequest request = GraphRequest.newMeRequest(token, (jsonObject, response) -> {
+            try {
+                String name = jsonObject.getString("name");
+                String email = jsonObject.has("email") ? jsonObject.getString("email") : "No disponible";
+                String photoUrl = "https://graph.facebook.com/" + jsonObject.getString("id") +
+                        "/picture?type=large&access_token=" + token.getToken();
+
+                // Pasar la información de Facebook al intent sin modificar la lógica de Google
+                Intent intent = new Intent(this, MainActivity.class);
+                intent.putExtra("USER_NAME", name);
+                intent.putExtra("USER_EMAIL", email);
+                intent.putExtra("USER_PHOTO", photoUrl);
+
+                Log.d("LoginActivity", "Facebook Photo URL: " + photoUrl);
+                startActivity(intent);
+                finish();
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+                Toast.makeText(LoginActivity.this, "Error al obtener datos de Facebook", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        Bundle parameters = new Bundle();
+        parameters.putString("fields", "id,name,email");
+        request.setParameters(parameters);
+        request.executeAsync();
+    }
 
     /**
      * Autentica al usuario en Firebase utilizando las credenciales de Google Sign-In.
@@ -131,5 +262,9 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        callbackManager.onActivityResult(requestCode, resultCode, data);
+    }
 }
-
