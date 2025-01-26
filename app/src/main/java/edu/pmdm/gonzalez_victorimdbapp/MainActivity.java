@@ -1,6 +1,7 @@
 package edu.pmdm.gonzalez_victorimdbapp;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -11,6 +12,7 @@ import com.facebook.login.LoginManager;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 
 import androidx.navigation.NavController;
@@ -20,30 +22,16 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
+import edu.pmdm.gonzalez_victorimdbapp.database.FavoritesManager;
+import edu.pmdm.gonzalez_victorimdbapp.database.UsersManager;
 import edu.pmdm.gonzalez_victorimdbapp.databinding.ActivityMainBinding;
+
 import com.squareup.picasso.Picasso;
 
-import android.content.Intent;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
+import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseFavoritesSync;
+import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseUsersSync;
+import edu.pmdm.gonzalez_victorimdbapp.utils.AppLifecycleManager;
 
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.material.navigation.NavigationView;
-import com.google.firebase.auth.FirebaseAuth;
-
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.appcompat.app.AppCompatActivity;
-
-import edu.pmdm.gonzalez_victorimdbapp.databinding.ActivityMainBinding;
-import com.squareup.picasso.Picasso;
 
 /**
  * Clase MainActivity.
@@ -64,9 +52,30 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Inicializar Firebase
+        FirebaseApp.initializeApp(this);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            registerActivityLifecycleCallbacks(new AppLifecycleManager(this));
+        }
+
+        // Inicializar el administrador de favoritos para manejar SQLite
+        FavoritesManager favoritesManager = new FavoritesManager(this);
+
+        // Sincronizar datos locales con la nube a través de FirebaseFavoritesSync
+        FirebaseFavoritesSync firebaseSync = new FirebaseFavoritesSync();
+        firebaseSync.syncFavoritesWithLocalDatabase(favoritesManager);
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setSupportActionBar(binding.appBarMain.toolbar);
+
+        // Sincronizar usuarios locales con Firestore
+        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
+        UsersManager usersManager = new UsersManager(this);
+
+        // Llamada al nuevo método adaptado
+        firebaseUsersSync.syncUsersWithFirestore(usersManager);
 
         DrawerLayout drawer = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
@@ -89,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
             updateUserInfo(userName, userEmail, userPhoto);
         }
 
+
         /**
          * Configura el botón de logout en el encabezado del NavigationView.
          * Cierra la sesión del usuario tanto en Firebase como en Google, y redirige a LoginActivity.
@@ -98,6 +108,9 @@ public class MainActivity extends AppCompatActivity {
         Button logoutButton = headerView.findViewById(R.id.btnLogout);
 
         logoutButton.setOnClickListener(v -> {
+            // Actualizar tiempo de logout en Firestore
+            firebaseUsersSync.updateLogoutTime();
+
             // Cerrar sesión de Firebase
             FirebaseAuth.getInstance().signOut();
 
@@ -116,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         });
+
 
     }
 

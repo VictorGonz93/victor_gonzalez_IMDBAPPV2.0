@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import edu.pmdm.gonzalez_victorimdbapp.models.Movie;
+import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseFavoritesSync;
 
 /**
  * Clase que gestiona las operaciones CRUD (Crear, Leer, Eliminar) sobre la tabla de películas favoritas
@@ -22,9 +23,12 @@ public class FavoritesManager {
 
     /** Instancia del helper de la base de datos que facilita las operaciones sobre SQLite. */
     private final FavoritesDatabaseHelper dbHelper;
+    private final FirebaseFavoritesSync firebaseSync;
 
     public FavoritesManager(Context context) {
         dbHelper = new FavoritesDatabaseHelper(context);
+        firebaseSync = new FirebaseFavoritesSync();
+        firebaseSync.syncFavoritesWithLocalDatabase(this);
     }
 
     /**
@@ -52,6 +56,9 @@ public class FavoritesManager {
                 SQLiteDatabase.CONFLICT_IGNORE // Evitar sobrescribir
         );
         db.close();
+
+        // Sincronizar con Firestore
+        firebaseSync.addFavoriteToFirestore(movie);
     }
 
     /**
@@ -62,14 +69,18 @@ public class FavoritesManager {
      */
     public void removeFavorite(String movieId, String userEmail) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
-        db.delete(
+        int deletedRows = db.delete(
                 FavoritesDatabaseHelper.TABLE_FAVORITES,
                 FavoritesDatabaseHelper.COLUMN_ID + "=? AND " +
                         FavoritesDatabaseHelper.COLUMN_USER_EMAIL + "=?",
                 new String[]{movieId, userEmail}
         );
         db.close();
+
+        // Eliminar de Firestore
+        firebaseSync.removeFavoriteFromFirestore(movieId, userEmail);
     }
+
 
     /**
      * Recupera la lista de películas favoritas de un usuario desde la base de datos.
