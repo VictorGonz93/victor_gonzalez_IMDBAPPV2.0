@@ -15,11 +15,11 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class FavoritesDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "favorites_db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     public static final String TABLE_FAVORITES = "favorites";
     public static final String COLUMN_ID = "id";
-    public static final String COLUMN_USER_EMAIL = "user_email";
+    public static final String COLUMN_USER_EMAIL = "user_id";
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_IMAGE_URL = "image_url";
     public static final String COLUMN_RELEASE_DATE = "release_date";

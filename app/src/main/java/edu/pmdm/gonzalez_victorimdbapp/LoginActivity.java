@@ -19,11 +19,7 @@ import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
-import com.facebook.FacebookSdk;
 import com.facebook.GraphRequest;
-import com.facebook.appevents.AppEventsLogger;
-import com.facebook.login.LoginBehavior;
-import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -37,33 +33,12 @@ import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
-import android.content.Intent;
-import android.os.Bundle;
-import android.util.Log;
-import android.widget.ImageView;
-
-import androidx.activity.EdgeToEdge;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.SignInButton;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.GoogleAuthProvider;
 
 import org.json.JSONException;
 
 import java.util.Arrays;
+
+import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseUsersSync;
 
 /**
  * Clase LoginActivity.
@@ -186,6 +161,11 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         // Inicio de sesión exitoso, obtener datos del usuario de Facebook
                         FirebaseUser user = firebaseAuth.getCurrentUser();
+
+                        // Guardar usuario en Firestore
+                        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
+                        firebaseUsersSync.syncCurrentUserToFirestore();
+
                         fetchFacebookUserProfile(token);
                     } else {
                         // Si el inicio de sesión falla, mostrar mensaje
@@ -240,6 +220,10 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = firebaseAuth.getCurrentUser();
+
+                        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
+                        firebaseUsersSync.syncCurrentUserToFirestore();
+
                         navigateToMainActivity(user);
                     } else {
                         Log.w("LoginActivity", "signInWithCredential:failure", task.getException());
