@@ -179,11 +179,19 @@ public class UsersManager {
         ContentValues values = new ContentValues();
         values.put(UsersDatabaseHelper.COLUMN_LOGOUT_TIME, logoutTime);
 
-        db.update(UsersDatabaseHelper.TABLE_USERS, values,
+        int rowsUpdated = db.update(
+                UsersDatabaseHelper.TABLE_USERS,
+                values,
                 UsersDatabaseHelper.COLUMN_USER_ID + " = ?",
-                new String[]{userId});
+                new String[]{userId}
+        );
         db.close();
-        Log.d("UsersManager", "Hora de logout actualizada localmente.");
+
+        if (rowsUpdated > 0) {
+            Log.d("UsersManager", "Logout actualizado localmente para el usuario: " + userId);
+        } else {
+            Log.d("UsersManager", "No se encontró usuario para actualizar el logout localmente.");
+        }
     }
 
     private void syncUserToFirestore(String userId, String name, String email, String loginTime, String logoutTime, String address, String phone, String image) {

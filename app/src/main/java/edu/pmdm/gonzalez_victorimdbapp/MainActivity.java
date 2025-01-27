@@ -26,7 +26,13 @@ import edu.pmdm.gonzalez_victorimdbapp.database.FavoritesManager;
 import edu.pmdm.gonzalez_victorimdbapp.database.UsersManager;
 import edu.pmdm.gonzalez_victorimdbapp.databinding.ActivityMainBinding;
 
+import com.google.firebase.auth.FirebaseUser;
 import com.squareup.picasso.Picasso;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReference;
 
 import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseFavoritesSync;
 import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseUsersSync;
@@ -72,10 +78,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Sincronizar usuarios locales con Firestore
         FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-        UsersManager usersManager = new UsersManager(this);
+        AtomicReference<UsersManager> usersManager = new AtomicReference<>(new UsersManager(this));
 
         // Llamada al nuevo método adaptado
-        firebaseUsersSync.syncUsersWithFirestore(usersManager);
+        firebaseUsersSync.syncUsersWithFirestore(usersManager.get());
 
         DrawerLayout drawer = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
@@ -108,8 +114,19 @@ public class MainActivity extends AppCompatActivity {
         Button logoutButton = headerView.findViewById(R.id.btnLogout);
 
         logoutButton.setOnClickListener(v -> {
-            // Actualizar tiempo de logout en Firestore
-            firebaseUsersSync.updateLogoutTime();
+            // Obtener el ID del usuario actual
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                String userId = currentUser.getUid();
+                String logoutTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+
+                // Actualizar logout en la base de datos local
+                usersManager.set(new UsersManager(this));
+                usersManager.get().updateLogoutTime(userId, logoutTime);
+
+                // Actualizar logout en Firestore
+                firebaseUsersSync.updateLogoutTime();
+            }
 
             // Cerrar sesión de Firebase
             FirebaseAuth.getInstance().signOut();
@@ -129,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         });
-
 
     }
 

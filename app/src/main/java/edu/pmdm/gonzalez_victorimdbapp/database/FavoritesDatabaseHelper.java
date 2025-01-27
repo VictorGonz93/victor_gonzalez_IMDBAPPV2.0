@@ -15,11 +15,11 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class FavoritesDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "favorites_db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 2;
 
     public static final String TABLE_FAVORITES = "favorites";
     public static final String COLUMN_ID = "id";
-    public static final String COLUMN_USER_EMAIL = "user_id";
+    public static final String COLUMN_USER_ID = "user_id";
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_IMAGE_URL = "image_url";
     public static final String COLUMN_RELEASE_DATE = "release_date";
@@ -32,12 +32,12 @@ public class FavoritesDatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_CREATE =
             "CREATE TABLE " + TABLE_FAVORITES + " (" +
                     COLUMN_ID + " TEXT, " +
-                    COLUMN_USER_EMAIL + " TEXT, " +
+                    COLUMN_USER_ID + " TEXT, " +
                     COLUMN_TITLE + " TEXT, " +
                     COLUMN_IMAGE_URL + " TEXT, " +
                     COLUMN_RELEASE_DATE + " TEXT, " +
                     COLUMN_RATING + " TEXT, " +
-                    "PRIMARY KEY (" + COLUMN_ID + ", " + COLUMN_USER_EMAIL + "));";
+                    "PRIMARY KEY (" + COLUMN_ID + ", " + COLUMN_USER_ID + "));";
 
     public FavoritesDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);

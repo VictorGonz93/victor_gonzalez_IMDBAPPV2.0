@@ -86,7 +86,7 @@ public class GalleryFragment extends Fragment {
         favoritesManager = new FavoritesManager(getContext());
 
         // Obtener películas favoritas del usuario
-        favoriteMovies = favoritesManager.getFavorites(userEmail);
+        favoriteMovies = favoritesManager.getFavorites();
 
         // Manejar visibilidad de la vista vacía
         updateEmptyViewVisibility();
@@ -191,7 +191,7 @@ public class GalleryFragment extends Fragment {
 
         // Recargar la lista de favoritos desde la base de datos
         favoriteMovies.clear();
-        favoriteMovies.addAll(favoritesManager.getFavorites(userEmail));
+        favoriteMovies.addAll(favoritesManager.getFavorites());
         movieAdapter.notifyDataSetChanged();
 
         // Actualizar visibilidad

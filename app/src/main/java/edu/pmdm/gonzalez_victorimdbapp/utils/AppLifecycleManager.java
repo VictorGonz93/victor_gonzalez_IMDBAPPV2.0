@@ -38,7 +38,7 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
 
     private static final String PREF_NAME = "AppPrefs";
     private static final String PREF_IS_LOGGED_IN = "is_logged_in";
-    private static final long LOGOUT_DELAY = 1000; // 1 segundos
+    private static final long LOGOUT_DELAY = 3000; // 3 segundos
 
     private boolean hasLoggedOut = false;
     private boolean hasLoggedIn = false;
@@ -59,7 +59,9 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
 
     @Override
     public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        checkForPendingLogout();
+        if (!activity.isChangingConfigurations()) {
+            checkForPendingLogout();
+        }
     }
 
     @Override
@@ -67,22 +69,23 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
         isInBackground = false;
         logoutHandler.removeCallbacks(logoutRunnable);
 
-        // Al reanudar la app, asegurarse de sincronizar con Firestore
-        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-        UsersManager usersManager = new UsersManager(context);
-        firebaseUsersSync.syncUsersWithFirestore(usersManager);
+        // Registrar login solo si no se ha registrado ya
+        if (FirebaseAuth.getInstance().getCurrentUser() != null && !hasLoggedIn) {
+            logUserLogin();
+        }
+
+        hasLoggedIn = true; // Marcar como logueado al menos una vez
+        hasLoggedOut = false; // Resetear el estado de logout
     }
 
     @Override
     public void onActivityPaused(Activity activity) {
         isInBackground = true;
-        logoutHandler.postDelayed(logoutRunnable, LOGOUT_DELAY);
 
-        // Sincronizar datos de la base local con Firestore
-        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-        firebaseUsersSync.syncCurrentUserToFirestore();
+        if (!hasLoggedOut) {
+            logoutHandler.postDelayed(logoutRunnable, LOGOUT_DELAY);
+        }
     }
-
     @Override
     public void onActivityStarted(Activity activity) {
         if (!isActivityChangingConfigurations) {
@@ -108,45 +111,35 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
 
     @Override
     public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
-        // No es necesario implementar nada para esta funcionalidad
     }
 
     @Override
     public void onTrimMemory(int level) {
-        if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+        if (level == TRIM_MEMORY_UI_HIDDEN) {
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             if (user != null) {
                 registerUserLogout(user);
             }
-
             SharedPreferences preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = preferences.edit();
             editor.putBoolean(PREF_IS_LOGGED_IN, false);
             editor.apply();
-
-            Log.d("AppLifecycleManager", "Logout registrado al minimizar la aplicación.");
         }
     }
 
-
     private void handleLogout() {
-        if (!hasLoggedOut) {
-            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            if (user != null) {
-                registerUserLogout(user);
-            }
-
-            SharedPreferences preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean(PREF_IS_LOGGED_IN, false);
-            editor.apply();
-
-            hasLoggedOut = true;
-            hasLoggedIn = false;
-            Log.d("AppLifecycleManager", "Logout automático ejecutado.");
-        } else {
-            Log.d("AppLifecycleManager", "Logout ya registrado previamente.");
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            registerUserLogout(user);
         }
+
+        SharedPreferences preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean(PREF_IS_LOGGED_IN, false);
+        editor.apply();
+
+        hasLoggedOut = true;  // Evitar múltiples registros de logout
+        hasLoggedIn = false;  // Reset para permitir nuevos logins
     }
 
     private void logUserLogin() {
@@ -162,11 +155,9 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
                     .document(user.getUid())
                     .update("activity_log", FieldValue.arrayUnion(loginEntry))
                     .addOnSuccessListener(aVoid -> {
-                        Log.d("AppLifecycleManager", "Login registrado en Firestore.");
-
-                        // Guardar en la base de datos local
                         UsersManager usersManager = new UsersManager(context);
                         usersManager.updateLoginTime(user.getUid(), loginTime);
+                        Log.d("AppLifecycleManager", "Login registrado en Firestore y local.");
                     })
                     .addOnFailureListener(e -> Log.e("AppLifecycleManager", "Error registrando login: " + e.getMessage()));
         }
@@ -174,6 +165,7 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
 
     private void registerUserLogout(FirebaseUser user) {
         String logoutTime = dateFormat.format(new Date());
+        UsersManager usersManager = new UsersManager(context);
 
         FirebaseFirestore.getInstance()
                 .collection("users")
@@ -186,7 +178,6 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
 
                         if (activityLog != null && !activityLog.isEmpty()) {
                             Map<String, Object> lastLogin = activityLog.get(activityLog.size() - 1);
-
                             if (lastLogin.get("logout_time") == null) {
                                 lastLogin.put("logout_time", logoutTime);
 
@@ -195,17 +186,15 @@ public class AppLifecycleManager implements Application.ActivityLifecycleCallbac
                                         .document(user.getUid())
                                         .update("activity_log", activityLog)
                                         .addOnSuccessListener(aVoid -> {
-                                            Log.d("AppLifecycleManager", "Logout registrado correctamente en Firestore.");
-
-                                            // Guardar en la base de datos local
-                                            UsersManager usersManager = new UsersManager(context);
                                             usersManager.updateLogoutTime(user.getUid(), logoutTime);
+                                            Log.d("AppLifecycleManager", "Logout registrado correctamente en Firestore y local.");
                                         })
                                         .addOnFailureListener(e -> Log.e("AppLifecycleManager", "Error registrando logout: " + e.getMessage()));
                             }
                         }
                     }
-                });
+                })
+                .addOnFailureListener(e -> Log.e("AppLifecycleManager", "Error obteniendo datos de Firestore: " + e.getMessage()));
     }
 
     private void checkForPendingLogout() {

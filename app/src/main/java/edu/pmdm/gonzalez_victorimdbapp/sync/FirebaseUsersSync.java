@@ -58,8 +58,15 @@ public class FirebaseUsersSync {
                     List<Map<String, Object>> activityLog = new ArrayList<>();
 
                     if (documentSnapshot.exists() && documentSnapshot.contains("activity_log")) {
-                        // Mantener los registros anteriores
                         activityLog = (List<Map<String, Object>>) documentSnapshot.get("activity_log");
+
+                        // Comprobar si ya existe un registro con el mismo login_time
+                        for (Map<String, Object> entry : activityLog) {
+                            if (entry.get("login_time").equals(loginTime)) {
+                                System.out.println("El login ya ha sido registrado.");
+                                return;
+                            }
+                        }
                     }
 
                     // Agregar nuevo registro de login
@@ -80,11 +87,12 @@ public class FirebaseUsersSync {
                     db.collection("users")
                             .document(userId)
                             .set(userData)
-                            .addOnSuccessListener(aVoid -> System.out.println("Usuario sincronizado correctamente en Firestore con todos los campos."))
+                            .addOnSuccessListener(aVoid -> System.out.println("Usuario sincronizado correctamente en Firestore."))
                             .addOnFailureListener(e -> System.err.println("Error al sincronizar usuario: " + e.getMessage()));
                 })
                 .addOnFailureListener(e -> System.err.println("Error al recuperar datos del usuario: " + e.getMessage()));
     }
+
 
     /**
      * Actualiza el tiempo de cierre de sesión del usuario actual en Firestore.

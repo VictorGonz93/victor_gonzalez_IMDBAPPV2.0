@@ -5,6 +5,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,9 +42,10 @@ public class FavoritesManager {
      */
     public void addFavorite(Movie movie, String userEmail) {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         ContentValues values = new ContentValues();
         values.put(FavoritesDatabaseHelper.COLUMN_ID, movie.getId());
-        values.put(FavoritesDatabaseHelper.COLUMN_USER_EMAIL, userEmail);
+        values.put(FavoritesDatabaseHelper.COLUMN_USER_ID, userId);
         values.put(FavoritesDatabaseHelper.COLUMN_TITLE, movie.getTitle());
         values.put(FavoritesDatabaseHelper.COLUMN_IMAGE_URL, movie.getImageUrl());
         values.put(FavoritesDatabaseHelper.COLUMN_RELEASE_DATE, movie.getReleaseYear());
@@ -72,7 +75,7 @@ public class FavoritesManager {
         int deletedRows = db.delete(
                 FavoritesDatabaseHelper.TABLE_FAVORITES,
                 FavoritesDatabaseHelper.COLUMN_ID + "=? AND " +
-                        FavoritesDatabaseHelper.COLUMN_USER_EMAIL + "=?",
+                        FavoritesDatabaseHelper.COLUMN_USER_ID + "=?",
                 new String[]{movieId, userEmail}
         );
         db.close();
@@ -85,18 +88,18 @@ public class FavoritesManager {
     /**
      * Recupera la lista de películas favoritas de un usuario desde la base de datos.
      *
-     * @param userEmail Correo electrónico del usuario para el que se obtendrán los favoritos.
      * @return Lista de objetos Movie que representan las películas favoritas del usuario.
      */
-    public List<Movie> getFavorites(String userEmail) {
+    public List<Movie> getFavorites() {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         List<Movie> favoriteMovies = new ArrayList<>();
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
         Cursor cursor = db.query(
                 FavoritesDatabaseHelper.TABLE_FAVORITES,
                 null,
-                FavoritesDatabaseHelper.COLUMN_USER_EMAIL + "=?",
-                new String[]{userEmail},
+                FavoritesDatabaseHelper.COLUMN_USER_ID + "=?",
+                new String[]{userId},
                 null,
                 null,
                 null
@@ -112,13 +115,11 @@ public class FavoritesManager {
                 movie.setRating(cursor.getString(cursor.getColumnIndexOrThrow(FavoritesDatabaseHelper.COLUMN_RATING)));
                 favoriteMovies.add(movie);
             } while (cursor.moveToNext());
-
             cursor.close();
         }
 
         db.close();
         return favoriteMovies;
     }
-
 
 }
