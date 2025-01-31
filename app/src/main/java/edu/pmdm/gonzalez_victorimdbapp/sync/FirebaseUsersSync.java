@@ -1,8 +1,11 @@
 package edu.pmdm.gonzalez_victorimdbapp.sync;
 
+import android.util.Log;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,6 +31,23 @@ public class FirebaseUsersSync {
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+    }
+
+    public void syncBasicUserToFirestore(String userId, String name, String email) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // Crear el mapa de datos del usuario con solo los campos básicos
+        Map<String, Object> userData = new HashMap<>();
+        userData.put("user_id", userId);
+        userData.put("name", name);
+        userData.put("email", email);
+
+        // Guardar los datos básicos en Firestore
+        db.collection("users")
+                .document(userId)
+                .set(userData, SetOptions.merge()) // Usar set con merge para evitar sobrescribir datos existentes
+                .addOnSuccessListener(aVoid -> Log.d("FirebaseUsersSync", "Usuario básico sincronizado con Firestore."))
+                .addOnFailureListener(e -> Log.e("FirebaseUsersSync", "Error al sincronizar usuario básico: " + e.getMessage()));
     }
 
     /**

@@ -3,6 +3,8 @@ package edu.pmdm.gonzalez_victorimdbapp;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -36,9 +38,16 @@ import com.google.firebase.auth.GoogleAuthProvider;
 
 import org.json.JSONException;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Locale;
 
+import edu.pmdm.gonzalez_victorimdbapp.database.FavoritesManager;
+import edu.pmdm.gonzalez_victorimdbapp.database.UsersManager;
+import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseFavoritesSync;
 import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseUsersSync;
+import edu.pmdm.gonzalez_victorimdbapp.utils.FacebookUtils;
 
 /**
  * Clase LoginActivity.
@@ -79,7 +88,24 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // Configurar botón de inicio de sesión
+        // Configurar boton de inicio de sesion Correo
+        EditText emailField = findViewById(R.id.emailEditText);
+        EditText passwordField = findViewById(R.id.passwordEditText);
+        Button loginMailButton = findViewById(R.id.loginButton);
+
+        // Funcion inicio de sesion correo
+        loginMailButton.setOnClickListener(v -> {
+            String email = emailField.getText().toString().trim();
+            String password = passwordField.getText().toString().trim();
+
+            if (!email.isEmpty() && !password.isEmpty()) {
+                signInWithEmailAndPassword(email, password);
+            } else {
+                Toast.makeText(this, "Por favor, ingresa tu correo y contraseña", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Configurar botón de inicio de sesión Google
         SignInButton signInButton = findViewById(R.id.btnSignIn);
         signInButton.setSize(SignInButton.SIZE_WIDE);
         signInButton.setColorScheme(SignInButton.COLOR_LIGHT);
@@ -149,6 +175,48 @@ public class LoginActivity extends AppCompatActivity {
             }
     );
 
+    // Funcion para el usuario con Correo y Password.
+    private void signInWithEmailAndPassword(String email, String password) {
+        FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+                        if (firebaseUser != null) {
+                            saveUserToLocalAndRemote(firebaseUser);
+
+                            FirebaseFavoritesSync firebaseFavoritesSync = new FirebaseFavoritesSync();
+                            FavoritesManager favoritesManager = new FavoritesManager(this);
+                            firebaseFavoritesSync.syncFavoritesWithLocalDatabase(favoritesManager);
+
+                            // Enviar datos del usuario a MainActivity
+                            navigateToMainActivity(firebaseUser);
+                        }
+                    } else {
+                        Toast.makeText(this, "Error al iniciar sesión: " + task.getException().getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    // Guardar datos cuenta Correo local y remoto POR REVISAR.
+    private void saveUserToLocalAndRemote(FirebaseUser firebaseUser) {
+        // Datos básicos del usuario
+        String userId = firebaseUser.getUid();
+        String name = firebaseUser.getDisplayName() != null ? firebaseUser.getDisplayName() : "Usuario";
+        String email = firebaseUser.getEmail() != null ? firebaseUser.getEmail() : "Correo no disponible";
+
+        // Guardar en la base de datos local
+        UsersManager usersManager = new UsersManager(this);
+        if (!usersManager.userExists(userId)) {
+            usersManager.addUser(userId, name, email, null, null, null, null, null);
+        }
+
+        // Guardar en Firestore
+        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
+        firebaseUsersSync.syncBasicUserToFirestore(userId, name, email);
+    }
+
+
     /**
      * Manejar el token de acceso de Facebook para autenticar con Firebase y obtener datos adicionales.
      *
@@ -159,54 +227,23 @@ public class LoginActivity extends AppCompatActivity {
         firebaseAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        // Inicio de sesión exitoso, obtener datos del usuario de Facebook
                         FirebaseUser user = firebaseAuth.getCurrentUser();
 
-                        // Guardar usuario en Firestore
+                        // Sincronizar usuario con Firestore
                         FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
                         firebaseUsersSync.syncCurrentUserToFirestore();
 
-                        fetchFacebookUserProfile(token);
+                        // Obtener datos de Facebook y actualizar MainActivity
+                        FacebookUtils.fetchFacebookUserProfile(token, this);
+
+                        // Redirigir a MainActivity
+                        Intent intent = new Intent(this, MainActivity.class);
+                        startActivity(intent);
+                        finish();
                     } else {
-                        // Si el inicio de sesión falla, mostrar mensaje
                         Toast.makeText(LoginActivity.this, "Error al autenticar con Firebase", Toast.LENGTH_SHORT).show();
                     }
                 });
-    }
-
-    /**
-     * Obtiene el perfil del usuario de Facebook utilizando Graph API.
-     *
-     * @param token Token de acceso de Facebook.
-     */
-    private void fetchFacebookUserProfile(AccessToken token) {
-        GraphRequest request = GraphRequest.newMeRequest(token, (jsonObject, response) -> {
-            try {
-                String name = jsonObject.getString("name");
-                String email = jsonObject.has("email") ? jsonObject.getString("email") : "No disponible";
-                String photoUrl = "https://graph.facebook.com/" + jsonObject.getString("id") +
-                        "/picture?type=large&access_token=" + token.getToken();
-
-                // Pasar la información de Facebook al intent sin modificar la lógica de Google
-                Intent intent = new Intent(this, MainActivity.class);
-                intent.putExtra("USER_NAME", name);
-                intent.putExtra("USER_EMAIL", email);
-                intent.putExtra("USER_PHOTO", photoUrl);
-
-                Log.d("LoginActivity", "Facebook Photo URL: " + photoUrl);
-                startActivity(intent);
-                finish();
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-                Toast.makeText(LoginActivity.this, "Error al obtener datos de Facebook", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        Bundle parameters = new Bundle();
-        parameters.putString("fields", "id,name,email");
-        request.setParameters(parameters);
-        request.executeAsync();
     }
 
     /**
@@ -241,7 +278,6 @@ public class LoginActivity extends AppCompatActivity {
         intent.putExtra("USER_NAME", user.getDisplayName());
         intent.putExtra("USER_EMAIL", user.getEmail());
         intent.putExtra("USER_PHOTO", user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : null);
-        Log.d("LoginActivity", "Photo URL: " + user.getPhotoUrl());
         startActivity(intent);
         finish();
     }
