@@ -119,6 +119,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Obtener datos del usuario autenticado
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            handleUserSession(currentUser);
+        }
+
         // Actualizar la UI con la información obtenida
         if (userName != null && userEmail != null) {
             updateUserInfo(userName, userEmail, userPhoto);
@@ -262,7 +268,6 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
 
     private final ActivityResultLauncher<Intent> editUserLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
