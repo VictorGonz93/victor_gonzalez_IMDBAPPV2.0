@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:ccp="http://schemas.android.com/apk/res-auto"
     android:padding="16dp"
     android:background="@color/white">
 
@@ -29,9 +30,12 @@
             android:layout_height="wrap_content"
             android:hint="Name"
             android:inputType="textPersonName"
+            android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ áéíóúÁÉÍÓÚñÑ"
+            android:maxLength="50"
             android:padding="10dp"
             android:background="@android:drawable/edit_text"
             android:textSize="16sp"/>
+
 
         <!-- Correo electrónico (solo lectura) -->
         <EditText
@@ -67,6 +71,16 @@
             android:textColor="@color/white"
             android:backgroundTint="@color/purple_700"
             android:layout_marginVertical="10dp"/>
+
+        <!-- Selector de prefijo telefónico -->
+        <com.hbb20.CountryCodePicker
+            android:id="@+id/ccp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            ccp:ccp_defaultNameCode="ES"
+            ccp:ccp_showFullName="false"
+            ccp:ccp_showNameCode="true" />
 
         <!-- Teléfono -->
         <EditText

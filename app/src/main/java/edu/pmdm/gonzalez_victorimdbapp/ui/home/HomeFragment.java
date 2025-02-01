@@ -8,13 +8,12 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.pmdm.gonzalez_victorimdbapp.IMDBApiClient;
+import edu.pmdm.gonzalez_victorimdbapp.utils.IMDBApiClient;
 import edu.pmdm.gonzalez_victorimdbapp.R;
 import edu.pmdm.gonzalez_victorimdbapp.adapter.MovieAdapter;
 import edu.pmdm.gonzalez_victorimdbapp.api.IMDBApiService;
@@ -23,8 +22,6 @@ import edu.pmdm.gonzalez_victorimdbapp.models.PopularMoviesResponse;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Fragmento para mostrar una lista de las películas más populares.

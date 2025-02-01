@@ -1,4 +1,4 @@
-package edu.pmdm.gonzalez_victorimdbapp;
+package edu.pmdm.gonzalez_victorimdbapp.utils;
 
 import edu.pmdm.gonzalez_victorimdbapp.api.IMDBApiService;
 import retrofit2.Retrofit;

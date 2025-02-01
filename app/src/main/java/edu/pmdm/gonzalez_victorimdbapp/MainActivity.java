@@ -274,15 +274,27 @@ public class MainActivity extends AppCompatActivity {
             result -> {
                 if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                     String updatedName = result.getData().getStringExtra("UPDATED_NAME");
+                    String updatedImage = result.getData().getStringExtra("UPDATED_IMAGE");
+
+                    // Obtener correo del usuario actual
+                    String userEmail = FirebaseAuth.getInstance().getCurrentUser().getEmail();
+
+                    // Si la imagen es null, buscar en la base de datos local
+                    if (updatedImage == null || updatedImage.isEmpty()) {
+                        UsersManager usersManager = new UsersManager(this);
+                        updatedImage = usersManager.getUser(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                                .get(FavoritesDatabaseHelper.COLUMN_IMAGE);
+                    }
 
                     // Actualizar los datos en el Navigation Drawer
-                    updateUserInfo(updatedName, FirebaseAuth.getInstance().getCurrentUser().getEmail(), null);
+                    updateUserInfo(updatedName, userEmail, updatedImage);
 
-                    // Opcional: Mostrar un mensaje de éxito
-                    Toast.makeText(MainActivity.this, "Perfil actualizado", Toast.LENGTH_SHORT).show();
+                    // Mostrar un mensaje de éxito
+                    Toast.makeText(MainActivity.this, "Perfil actualizado correctamente", Toast.LENGTH_SHORT).show();
                 }
             }
     );
+
 
     @Override
     public boolean onSupportNavigateUp() {

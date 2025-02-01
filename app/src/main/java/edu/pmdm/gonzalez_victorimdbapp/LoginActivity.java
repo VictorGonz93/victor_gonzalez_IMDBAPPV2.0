@@ -42,7 +42,9 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 
+import edu.pmdm.gonzalez_victorimdbapp.database.FavoritesDatabaseHelper;
 import edu.pmdm.gonzalez_victorimdbapp.database.FavoritesManager;
 import edu.pmdm.gonzalez_victorimdbapp.database.UsersManager;
 import edu.pmdm.gonzalez_victorimdbapp.sync.FirebaseFavoritesSync;
@@ -198,25 +200,55 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
-    // Guardar datos cuenta Correo local y remoto POR REVISAR.
-    private void saveUserToLocalAndRemote(FirebaseUser firebaseUser) {
-        // Datos básicos del usuario
-        String userId = firebaseUser.getUid();
-        String name = firebaseUser.getDisplayName() != null ? firebaseUser.getDisplayName() : "Usuario";
-        String email = firebaseUser.getEmail() != null ? firebaseUser.getEmail() : "Correo no disponible";
 
-        // Guardar en la base de datos local
+    private void saveUserToLocalAndRemote(FirebaseUser firebaseUser) {
+        String userId = firebaseUser.getUid();
+
+        // Acceder a la base de datos local
         UsersManager usersManager = new UsersManager(this);
-        if (!usersManager.userExists(userId)) {
-            usersManager.addUser(userId, name, email, null, null, null, null, null);
+        Map<String, String> localUserData = usersManager.getUser(userId);
+
+        // Intentar usar el displayName de Firebase; si es nulo, verificar en la base de datos local
+        String name = firebaseUser.getDisplayName();
+        if (name == null || name.isEmpty()) {
+            if (localUserData != null && localUserData.get(FavoritesDatabaseHelper.COLUMN_NAME) != null
+                    && !localUserData.get(FavoritesDatabaseHelper.COLUMN_NAME).isEmpty()) {
+                name = localUserData.get(FavoritesDatabaseHelper.COLUMN_NAME);
+            } else {
+                name = "Usuario";
+            }
         }
 
-        // Guardar en Firestore
+        String email = firebaseUser.getEmail() != null ? firebaseUser.getEmail() : "Correo no disponible";
+        String image = firebaseUser.getPhotoUrl() != null ? firebaseUser.getPhotoUrl().toString() : null;
+
+        // Si ya existen datos locales, se recuperan address y phone y se conserva la imagen actual si existe
+        String address = "";
+        String phone = "";
+        if (localUserData != null) {
+            address = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "");
+            phone = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "");
+            image = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_IMAGE, image);
+        }
+
+        // Si el usuario no existe en la BD local, se añade; si existe, se actualiza
+        if (!usersManager.userExists(userId)) {
+            usersManager.addUser(userId, name, email, null, null, address, phone, image);
+        } else {
+            usersManager.updateUser(userId, name, email, null, null, address, phone, image);
+        }
+
+        // Sincronizar en Firestore
         FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-        firebaseUsersSync.syncBasicUserToFirestore(userId, name, email);
+        firebaseUsersSync.syncBasicUserToFirestore(userId, name, email, address, phone, image);
     }
 
 
+    /**
+     * Manejar el token de acceso de Facebook para autenticar con Firebase y obtener datos adicionales.
+     *
+     * @param token Token de acceso de Facebook.
+     */
     /**
      * Manejar el token de acceso de Facebook para autenticar con Firebase y obtener datos adicionales.
      *
@@ -229,12 +261,33 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser user = firebaseAuth.getCurrentUser();
 
-                        // Sincronizar usuario con Firestore
-                        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-                        firebaseUsersSync.syncCurrentUserToFirestore();
+                        if (user != null) {
+                            UsersManager usersManager = new UsersManager(this);
+                            FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
 
-                        // Obtener datos de Facebook y actualizar MainActivity
-                        FacebookUtils.fetchFacebookUserProfile(token, this);
+                            // Obtener datos del usuario desde SQLite
+                            Map<String, String> userData = usersManager.getUser(user.getUid());
+
+                            String address = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "") : "";
+                            String phone = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "") : "";
+
+                            // Obtener imagen de Facebook directamente
+                            String image = "https://graph.facebook.com/" + user.getUid() +
+                                    "/picture?type=large&access_token=" + token.getToken();
+
+                            // Guardar usuario en SQLite si no existe
+                            if (!usersManager.userExists(user.getUid())) {
+                                usersManager.addUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
+                            } else {
+                                usersManager.updateUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
+                            }
+
+                            // Sincronizar usuario con Firestore
+                            firebaseUsersSync.syncBasicUserToFirestore(user.getUid(), user.getDisplayName(), user.getEmail(), address, phone, image);
+
+                            // Obtener datos de Facebook y actualizar MainActivity
+                            FacebookUtils.fetchFacebookUserProfile(token, this);
+                        }
 
                         // Redirigir a MainActivity
                         Intent intent = new Intent(this, MainActivity.class);
@@ -246,6 +299,13 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+
+
+    /**
+     * Autentica al usuario en Firebase utilizando las credenciales de Google Sign-In.
+     *
+     * @param account Cuenta de Google obtenida tras iniciar sesión correctamente.
+     */
     /**
      * Autentica al usuario en Firebase utilizando las credenciales de Google Sign-In.
      *
@@ -258,8 +318,27 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser user = firebaseAuth.getCurrentUser();
 
-                        FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-                        firebaseUsersSync.syncCurrentUserToFirestore();
+                        if (user != null) {
+                            UsersManager usersManager = new UsersManager(this);
+                            FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
+
+                            // Obtener datos del usuario desde SQLite
+                            Map<String, String> userData = usersManager.getUser(user.getUid());
+
+                            String address = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "") : "";
+                            String phone = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "") : "";
+                            String image = user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : "";
+
+                            // Guardar usuario en SQLite si no existe
+                            if (!usersManager.userExists(user.getUid())) {
+                                usersManager.addUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
+                            } else {
+                                usersManager.updateUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
+                            }
+
+                            // Sincronizar usuario con Firestore
+                            firebaseUsersSync.syncBasicUserToFirestore(user.getUid(), user.getDisplayName(), user.getEmail(), address, phone, image);
+                        }
 
                         navigateToMainActivity(user);
                     } else {
@@ -268,19 +347,30 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+
     /**
      * Navega a la actividad principal pasando la información del usuario autenticado.
      *
      * @param user Objeto FirebaseUser con los datos del usuario autenticado.
      */
     private void navigateToMainActivity(FirebaseUser user) {
+        UsersManager usersManager = new UsersManager(this);
+        Map<String, String> userData = usersManager.getUser(user.getUid());
+
+        // Si no hay datos en la base de datos, usar valores predeterminados de Firebase
+        String userName = (userData != null) ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_NAME, user.getDisplayName()) : user.getDisplayName();
+        String userEmail = (userData != null) ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_EMAIL, user.getEmail()) : user.getEmail();
+        String userPhoto = (userData != null) ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_IMAGE, (user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : null)) : null;
+
         Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra("USER_NAME", user.getDisplayName());
-        intent.putExtra("USER_EMAIL", user.getEmail());
-        intent.putExtra("USER_PHOTO", user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : null);
+        intent.putExtra("USER_NAME", userName);
+        intent.putExtra("USER_EMAIL", userEmail);
+        intent.putExtra("USER_PHOTO", userPhoto);
+
         startActivity(intent);
         finish();
     }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {

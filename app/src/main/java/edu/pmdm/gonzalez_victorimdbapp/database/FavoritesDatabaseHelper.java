@@ -14,7 +14,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class FavoritesDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "favorites_db";  // Base de datos única
-    private static final int DATABASE_VERSION = 6;  // Incrementado para reflejar cambios estructurales
+    private static final int DATABASE_VERSION = 8;  // Incrementado para reflejar cambios estructurales
 
     // Tabla Usuarios
     public static final String TABLE_USERS = "users";

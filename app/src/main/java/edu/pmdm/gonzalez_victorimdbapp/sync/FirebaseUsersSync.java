@@ -1,5 +1,6 @@
 package edu.pmdm.gonzalez_victorimdbapp.sync;
 
+import android.net.Uri;
 import android.util.Log;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -33,7 +34,7 @@ public class FirebaseUsersSync {
         dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
     }
 
-    public void syncBasicUserToFirestore(String userId, String name, String email) {
+    public void syncBasicUserToFirestore(String userId, String name, String email, String address, String phone, String image) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // Crear el mapa de datos del usuario con solo los campos básicos
@@ -41,6 +42,9 @@ public class FirebaseUsersSync {
         userData.put("user_id", userId);
         userData.put("name", name);
         userData.put("email", email);
+        userData.put("address", address);
+        userData.put("phone", phone);
+        userData.put("image", image);
 
         // Guardar los datos básicos en Firestore
         db.collection("users")
@@ -62,6 +66,9 @@ public class FirebaseUsersSync {
         String userId = currentUser.getUid();
         String email = currentUser.getEmail();
         String name = currentUser.getDisplayName();
+        String address = currentUser.getTenantId();
+        String phone = currentUser.getPhoneNumber();
+        Uri image = currentUser.getPhotoUrl();
 
         if (email == null || name == null) {
             System.err.println("Error: Falta información del usuario.");
@@ -102,6 +109,10 @@ public class FirebaseUsersSync {
                     userData.put("name", name);
                     userData.put("email", email);
                     userData.put("activity_log", activityLog);
+                    userData.put("address", address);
+                    userData.put("phone", phone);
+                    userData.put("image", image);
+
 
                     // Actualizar Firestore con nuevos datos
                     db.collection("users")

@@ -61,4 +61,6 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.picasso)
     implementation(libs.facebook.login)
+    implementation(libs.countryCodePicker)
+    implementation(libs.libphonenumber)
 }

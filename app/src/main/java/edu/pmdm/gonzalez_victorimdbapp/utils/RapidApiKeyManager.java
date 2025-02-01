@@ -1,4 +1,4 @@
-package edu.pmdm.gonzalez_victorimdbapp;
+package edu.pmdm.gonzalez_victorimdbapp.utils;
 
 import java.util.ArrayList;
 import java.util.List;
