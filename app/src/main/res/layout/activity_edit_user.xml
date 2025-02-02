@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:ccp="http://schemas.android.com/apk/res-auto"
+    android:padding="16dp"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <!-- Título -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IMDBMoviesApp"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_700"
+            android:gravity="center"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Nombre del usuario -->
+        <EditText
+            android:id="@+id/editName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Name"
+            android:inputType="textPersonName"
+            android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ áéíóúÁÉÍÓÚñÑ"
+            android:maxLength="50"
+            android:padding="10dp"
+            android:background="@android:drawable/edit_text"
+            android:textSize="16sp"/>
+
+
+        <!-- Correo electrónico (solo lectura) -->
+        <EditText
+            android:id="@+id/editEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:padding="10dp"
+            android:textSize="16sp"
+            android:focusable="true"
+            android:background="@android:drawable/edit_text"/>
+
+        <!-- Dirección -->
+        <EditText
+            android:id="@+id/editAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Address"
+            android:inputType="textPostalAddress"
+            android:padding="10dp"
+            android:textSize="16sp"
+            android:focusable="false"
+            android:background="@android:drawable/edit_text"/>
+
+        <!-- Botón seleccionar dirección -->
+        <Button
+            android:id="@+id/btnSelectAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SELECCIONAR DIRECCIÓN"
+            android:textSize="16sp"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/purple_700"
+            android:layout_marginVertical="10dp"/>
+
+        <!-- Selector de prefijo telefónico -->
+        <com.hbb20.CountryCodePicker
+            android:id="@+id/ccp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            ccp:ccp_defaultNameCode="ES"
+            ccp:ccp_showFullName="false"
+            ccp:ccp_showNameCode="true" />
+
+        <!-- Teléfono -->
+        <EditText
+            android:id="@+id/editPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Phone"
+            android:inputType="phone"
+            android:padding="10dp"
+            android:textSize="16sp"
+            android:background="@android:drawable/edit_text"/>
+
+        <!-- Imagen del usuario -->
+        <ImageView
+            android:id="@+id/profileImageView"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginTop="10dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/default_user_image"/>
+
+        <!-- Botón para seleccionar imagen -->
+        <Button
+            android:id="@+id/btnSelectImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SELECT IMAGE"
+            android:textSize="16sp"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/purple_700"
+            android:layout_marginTop="10dp"/>
+
+        <!-- Botón para guardar cambios -->
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SAVE"
+            android:textSize="18sp"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/purple_700"
+            android:layout_marginTop="20dp"/>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/white">
+
+    <!-- Campo para mostrar la dirección seleccionada -->
+    <EditText
+        android:id="@+id/editSelectedAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Aquí se muestra la dirección elegida"
+        android:inputType="none"
+        android:padding="10dp"
+        android:textSize="16sp"
+        android:background="@android:drawable/edit_text"
+        android:focusable="false"/>
+
+    <!-- Botón para buscar dirección -->
+    <Button
+        android:id="@+id/btnSearchAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="BUSCAR DIRECCIÓN"
+        android:textSize="16sp"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/purple_700"
+        android:layout_marginVertical="10dp"/>
+
+    <!-- Imagen estática de Google Maps -->
+    <ImageView
+        android:id="@+id/staticMapImageView"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="Mapa estático del lugar seleccionado" />
+
+    <!-- Botón para confirmar la dirección -->
+    <Button
+        android:id="@+id/btnConfirmAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CONFIRMAR DIRECCIÓN"
+        android:textSize="18sp"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/purple_700"
+        android:layout_marginTop="10dp"/>
+
+</LinearLayout>

@@ -92,14 +92,14 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
 
             if (isFavoritesMode) {
                 // Modo favoritos: Eliminar de la lista
-                favoritesManager.removeFavorite(movie.getId(), userEmail);
+                favoritesManager.removeFavorite(movie.getId());
                 movieList.remove(position); // Eliminar de la lista local
                 notifyItemRemoved(position);
                 notifyItemRangeChanged(position, movieList.size());
                 Toast.makeText(context, "Eliminada de favoritos: " + movie.getTitle(), Toast.LENGTH_SHORT).show();
             } else {
                 // Modo principal: Agregar a favoritos
-                favoritesManager.addFavorite(movie, userEmail);
+                favoritesManager.addFavorite(movie);
                 Toast.makeText(context, "Agregada a favoritos: " + movie.getTitle(), Toast.LENGTH_SHORT).show();
             }
             return true;

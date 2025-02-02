@@ -48,6 +48,8 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.firestore)
+    implementation(libs.places)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -59,4 +61,6 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.picasso)
     implementation(libs.facebook.login)
+    implementation(libs.countryCodePicker)
+    implementation(libs.libphonenumber)
 }

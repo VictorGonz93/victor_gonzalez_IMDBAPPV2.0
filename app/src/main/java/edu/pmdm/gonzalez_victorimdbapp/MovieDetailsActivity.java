@@ -24,11 +24,10 @@ import com.bumptech.glide.Glide;
 import edu.pmdm.gonzalez_victorimdbapp.api.IMDBApiService;
 import edu.pmdm.gonzalez_victorimdbapp.models.Movie;
 import edu.pmdm.gonzalez_victorimdbapp.models.MovieOverviewResponse;
+import edu.pmdm.gonzalez_victorimdbapp.utils.IMDBApiClient;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Actividad para mostrar los detalles de una película seleccionada.
