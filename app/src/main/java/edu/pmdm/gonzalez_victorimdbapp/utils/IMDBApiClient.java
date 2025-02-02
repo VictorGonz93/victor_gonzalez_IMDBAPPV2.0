@@ -1,5 +1,6 @@
 package edu.pmdm.gonzalez_victorimdbapp.utils;
 
+import android.util.Log;
 import edu.pmdm.gonzalez_victorimdbapp.api.IMDBApiService;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -7,12 +8,16 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class IMDBApiClient {
 
     private static final String BASE_URL = "https://imdb-com.p.rapidapi.com/";
+    private static final String TAG = "IMDBApiClient";
     private static IMDBApiService apiService;
     private static RapidApiKeyManager apiKeyManager = new RapidApiKeyManager();
 
     // Obtiene el servicio API
     public static IMDBApiService getApiService() {
         if (apiService == null) {
+            Log.d(TAG, "Creando Retrofit con BASE_URL: " + BASE_URL);
+            // Imprime la clave actual que se usará
+            Log.d(TAG, "Usando API Key: " + getApiKey());
             Retrofit retrofit = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
                     .addConverterFactory(GsonConverterFactory.create())
@@ -31,9 +36,11 @@ public class IMDBApiClient {
     public static void switchApiKey() {
         try {
             apiKeyManager.switchToNextKey();
+            Log.d(TAG, "Clave API cambiada. Nueva clave: " + getApiKey());
+            // Si fuera necesario, podrías reinicializar apiService para que se use la nueva clave en futuras llamadas.
+            apiService = null;  // Se forzará la recreación del servicio en el siguiente getApiService()
         } catch (IllegalStateException e) {
-            // Maneja el caso donde no hay más claves disponibles
-            System.err.println("Error: No hay más claves disponibles.");
+            Log.e(TAG, "Error: " + e.getMessage());
         }
     }
 }

@@ -18,7 +18,6 @@ import edu.pmdm.gonzalez_victorimdbapp.models.Movie;
 public class FirebaseFavoritesSync {
 
     private final FirebaseFirestore db;
-    private static final String FAVORITES_COLLECTION_ID = "Bi2Bst134lyb2FzI7eHm";  // ID fija de la colección en Firestore
 
     public FirebaseFavoritesSync() {
         db = FirebaseFirestore.getInstance();

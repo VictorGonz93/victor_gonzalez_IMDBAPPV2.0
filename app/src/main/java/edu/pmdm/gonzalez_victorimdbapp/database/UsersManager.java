@@ -236,7 +236,7 @@ public class UsersManager {
     }
 
     /**
-     * 🔥 Sube todos los datos del usuario a Firestore.
+     * Sube todos los datos del usuario a Firestore.
      */
     private void syncUserToFirestore(String userId, String name, String email, String address, String phone, String image) {
         FirebaseFirestore firestore = FirebaseFirestore.getInstance();

@@ -200,7 +200,6 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
-
     private void saveUserToLocalAndRemote(FirebaseUser firebaseUser) {
         String userId = firebaseUser.getUid();
 
