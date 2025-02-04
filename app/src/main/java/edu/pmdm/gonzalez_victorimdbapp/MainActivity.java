@@ -224,15 +224,15 @@ public class MainActivity extends AppCompatActivity {
         userNameTextView.setText(userName);
         userEmailTextView.setText(userEmail);
 
-        if (userPhoto != null) {
-            // Cargar la imagen de perfil con Picasso
+        if (userPhoto != null && !userPhoto.trim().isEmpty()) {
+            // Cargar la imagen de perfil con Picasso solo si la URL no está vacía
             Picasso.get()
                     .load(userPhoto)
                     .placeholder(R.drawable.default_user_image) // Imagen predeterminada mientras carga
                     .error(R.drawable.default_user_image) // Imagen predeterminada en caso de error
                     .into(userImageView);
         } else {
-            // Usar una imagen predeterminada si no hay foto
+            // Usar una imagen predeterminada si no hay foto o la URL es vacía
             userImageView.setImageResource(R.drawable.default_user_image);
         }
     }

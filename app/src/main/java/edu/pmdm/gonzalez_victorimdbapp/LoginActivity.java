@@ -35,6 +35,7 @@ import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import org.json.JSONException;
 
@@ -118,6 +119,19 @@ public class LoginActivity extends AppCompatActivity {
                 .requestEmail()
                 .build();
 
+        // En el onCreate(), después de inicializar los botones
+        Button registerButton = findViewById(R.id.registerButton);
+        registerButton.setOnClickListener(v -> {
+            String email = emailField.getText().toString().trim();
+            String password = passwordField.getText().toString().trim();
+
+            if (!email.isEmpty() && !password.isEmpty()) {
+                registerUserWithEmailAndPassword(email, password);
+            } else {
+                Toast.makeText(this, "Por favor, ingresa un correo y contraseña válidos.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         // Evento de clic para iniciar sesión
         findViewById(R.id.btnSignIn).setOnClickListener(v -> {
             Intent signInIntent = GoogleSignIn.getClient(this, gso).getSignInIntent();
@@ -177,6 +191,26 @@ public class LoginActivity extends AppCompatActivity {
             }
     );
 
+    /**
+     * Registra un usuario en Firebase Authentication usando correo y contraseña.
+     */
+    private void registerUserWithEmailAndPassword(String email, String password) {
+        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+                        if (firebaseUser != null) {
+                            saveUserToLocalAndRemote(firebaseUser, "Usuario"); // Guardar usuario en local y Firestore
+                            Toast.makeText(this, "Usuario registrado", Toast.LENGTH_SHORT).show();
+
+                        }
+                    } else {
+                        Toast.makeText(this, "Error al registrar usuario: " + task.getException().getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
     // Funcion para el usuario con Correo y Password.
     private void signInWithEmailAndPassword(String email, String password) {
         FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
@@ -184,7 +218,7 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
                         if (firebaseUser != null) {
-                            saveUserToLocalAndRemote(firebaseUser);
+                            saveUserToLocalAndRemote(firebaseUser, "Usuario");
 
                             FirebaseFavoritesSync firebaseFavoritesSync = new FirebaseFavoritesSync();
                             FavoritesManager favoritesManager = new FavoritesManager(this);
@@ -200,48 +234,53 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
-    private void saveUserToLocalAndRemote(FirebaseUser firebaseUser) {
+    private void saveUserToLocalAndRemote(FirebaseUser firebaseUser, String forcedName) {
         String userId = firebaseUser.getUid();
-
-        // Acceder a la base de datos local
         UsersManager usersManager = new UsersManager(this);
-        Map<String, String> localUserData = usersManager.getUser(userId);
-
-        // Intentar usar el displayName de Firebase; si es nulo, verificar en la base de datos local
-        String name = firebaseUser.getDisplayName();
-        if (name == null || name.isEmpty()) {
-            if (localUserData != null && localUserData.get(FavoritesDatabaseHelper.COLUMN_NAME) != null
-                    && !localUserData.get(FavoritesDatabaseHelper.COLUMN_NAME).isEmpty()) {
-                name = localUserData.get(FavoritesDatabaseHelper.COLUMN_NAME);
-            } else {
-                name = "Usuario";
-            }
-        }
-
-        String email = firebaseUser.getEmail() != null ? firebaseUser.getEmail() : "Correo no disponible";
-        String image = firebaseUser.getPhotoUrl() != null ? firebaseUser.getPhotoUrl().toString() : null;
-
-        // Si ya existen datos locales, se recuperan address y phone y se conserva la imagen actual si existe
-        String address = "";
-        String phone = "";
-        if (localUserData != null) {
-            address = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "");
-            phone = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "");
-            image = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_IMAGE, image);
-        }
-
-        // Si el usuario no existe en la BD local, se añade; si existe, se actualiza
-        if (!usersManager.userExists(userId)) {
-            usersManager.addUser(userId, name, email, null, null, address, phone, image);
-        } else {
-            usersManager.updateUser(userId, name, email, null, null, address, phone, image);
-        }
-
-        // Sincronizar en Firestore
         FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-        firebaseUsersSync.syncBasicUserToFirestore(userId, name, email, address, phone, image);
-    }
 
+        // Obtener proveedor de autenticación
+        String providerId = firebaseUser.getProviderData().get(1).getProviderId(); // "google.com", "facebook.com" o "password"
+
+        // Obtener datos de Firestore primero
+        FirebaseFirestore.getInstance().collection("users")
+                .document(userId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    Map<String, String> localUserData = usersManager.getUser(userId);
+
+                    // Recuperar datos de Firestore
+                    String firestoreName = documentSnapshot.getString("name");
+                    String email = documentSnapshot.getString("email");
+                    String address = documentSnapshot.getString("address");
+                    String phone = documentSnapshot.getString("phone");
+                    String image = documentSnapshot.getString("image");
+
+                    // 🔹 USAR EL NOMBRE FORZADO SI ESTÁ DISPONIBLE
+                    String name = (forcedName != null && !forcedName.isEmpty()) ? forcedName : firestoreName;
+
+
+                    // Si Firestore está vacío, usar datos locales
+                    if (email == null || email.isEmpty()) email = firebaseUser.getEmail();
+                    if (address == null || address.isEmpty()) address = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "");
+                    if (phone == null || phone.isEmpty()) phone = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "");
+                    if (image == null || image.isEmpty()) {
+                        image = firebaseUser.getPhotoUrl() != null ? firebaseUser.getPhotoUrl().toString() : "";
+                        image = localUserData.getOrDefault(FavoritesDatabaseHelper.COLUMN_IMAGE, image);
+                    }
+
+                    // Guardar datos en local
+                    if (!usersManager.userExists(userId)) {
+                        usersManager.addUser(userId, name, email, null, null, address, phone, image);
+                    } else {
+                        usersManager.updateUser(userId, name, email, null, null, address, phone, image);
+                    }
+
+                    // Sincronizar en Firestore si hay datos nuevos
+                    firebaseUsersSync.syncBasicUserToFirestore(userId, name, email, address, phone, image);
+                })
+                .addOnFailureListener(e -> Log.e("FirestoreSync", "Error al obtener datos de Firestore: " + e.getMessage()));
+    }
 
     /**
      * Manejar el token de acceso de Facebook para autenticar con Firebase y obtener datos adicionales.
@@ -259,46 +298,17 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = firebaseAuth.getCurrentUser();
-
                         if (user != null) {
-                            UsersManager usersManager = new UsersManager(this);
-                            FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
+                            String facebookName = user.getDisplayName();
 
-                            // Obtener datos del usuario desde SQLite
-                            Map<String, String> userData = usersManager.getUser(user.getUid());
-
-                            String address = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "") : "";
-                            String phone = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "") : "";
-
-                            // Obtener imagen de Facebook directamente
-                            String image = "https://graph.facebook.com/" + user.getUid() +
-                                    "/picture?type=large&access_token=" + token.getToken();
-
-                            // Guardar usuario en SQLite si no existe
-                            if (!usersManager.userExists(user.getUid())) {
-                                usersManager.addUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
-                            } else {
-                                usersManager.updateUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
-                            }
-
-                            // Sincronizar usuario con Firestore
-                            firebaseUsersSync.syncBasicUserToFirestore(user.getUid(), user.getDisplayName(), user.getEmail(), address, phone, image);
-
-                            // Obtener datos de Facebook y actualizar MainActivity
-                            FacebookUtils.fetchFacebookUserProfile(token, this);
+                            saveUserToLocalAndRemote(user , facebookName);
+                            navigateToMainActivity(user);
                         }
-
-                        // Redirigir a MainActivity
-                        Intent intent = new Intent(this, MainActivity.class);
-                        startActivity(intent);
-                        finish();
                     } else {
                         Toast.makeText(LoginActivity.this, "Error al autenticar con Firebase", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
-
-
 
     /**
      * Autentica al usuario en Firebase utilizando las credenciales de Google Sign-In.
@@ -316,36 +326,16 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = firebaseAuth.getCurrentUser();
-
                         if (user != null) {
-                            UsersManager usersManager = new UsersManager(this);
-                            FirebaseUsersSync firebaseUsersSync = new FirebaseUsersSync();
-
-                            // Obtener datos del usuario desde SQLite
-                            Map<String, String> userData = usersManager.getUser(user.getUid());
-
-                            String address = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "") : "";
-                            String phone = userData != null ? userData.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "") : "";
-                            String image = user.getPhotoUrl() != null ? user.getPhotoUrl().toString() : "";
-
-                            // Guardar usuario en SQLite si no existe
-                            if (!usersManager.userExists(user.getUid())) {
-                                usersManager.addUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
-                            } else {
-                                usersManager.updateUser(user.getUid(), user.getDisplayName(), user.getEmail(), null, null, address, phone, image);
-                            }
-
-                            // Sincronizar usuario con Firestore
-                            firebaseUsersSync.syncBasicUserToFirestore(user.getUid(), user.getDisplayName(), user.getEmail(), address, phone, image);
+                            String googleName = user.getDisplayName();
+                            saveUserToLocalAndRemote(user, googleName);
+                            navigateToMainActivity(user);
                         }
-
-                        navigateToMainActivity(user);
                     } else {
                         Log.w("LoginActivity", "signInWithCredential:failure", task.getException());
                     }
                 });
     }
-
 
     /**
      * Navega a la actividad principal pasando la información del usuario autenticado.

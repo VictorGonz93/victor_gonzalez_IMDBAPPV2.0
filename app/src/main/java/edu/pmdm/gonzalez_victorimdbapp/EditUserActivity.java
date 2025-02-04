@@ -161,10 +161,10 @@ public class EditUserActivity extends AppCompatActivity {
                 String decryptedPhone = encryptedPhone;
                 try {
                     if (encryptedAddress != null && !encryptedAddress.isEmpty()) {
-                        decryptedAddress = new KeystoreManager().decryptData(encryptedAddress);
+                        decryptedAddress = new KeystoreManager(userId).decryptData(encryptedAddress);
                     }
                     if (encryptedPhone != null && !encryptedPhone.isEmpty()) {
-                        decryptedPhone = new KeystoreManager().decryptData(encryptedPhone);
+                        decryptedPhone = new KeystoreManager(userId).decryptData(encryptedPhone);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -328,15 +328,36 @@ public class EditUserActivity extends AppCompatActivity {
         }
     }
 
-    // Método para guardar los datos del usuario
+    private boolean isValidPhoneNumber(String phoneNumber, String countryCode) {
+        PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
+        try {
+            Phonenumber.PhoneNumber parsedNumber = phoneUtil.parse(phoneNumber, countryCode);
+
+            // Validar si es un número realmente válido
+            if (!phoneUtil.isValidNumber(parsedNumber)) {
+                return false;
+            }
+
+            // Asegurar que solo se acepten números móviles o fijos
+            PhoneNumberUtil.PhoneNumberType numberType = phoneUtil.getNumberType(parsedNumber);
+            return numberType == PhoneNumberUtil.PhoneNumberType.MOBILE ||
+                    numberType == PhoneNumberUtil.PhoneNumberType.FIXED_LINE;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false; // Si hay error, el número no es válido
+        }
+    }
+
+
     private void saveUserData() {
         String updatedName = editName.getText().toString().trim();
         String updatedAddress = editAddress.getText().toString().trim();
-        // Obtener el número completo (prefijo + número local) a través del CCP
-        String updatedPhone = ccp.getFullNumberWithPlus();
+        String updatedPhone = ccp.getFullNumberWithPlus(); // Obtener número con prefijo
 
-        if (!PhoneNumberUtils.isGlobalPhoneNumber(updatedPhone)) {
-            Toast.makeText(this, "El número telefónico no es válido", Toast.LENGTH_SHORT).show();
+        // Validar el número con libphonenumber
+        if (!isValidPhoneNumber(updatedPhone, ccp.getSelectedCountryNameCode())) {
+            Toast.makeText(this, "El número telefónico no es válido para el país seleccionado", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -360,9 +381,9 @@ public class EditUserActivity extends AppCompatActivity {
             updatedImage = currentImage;
         }
 
-        // Encriptar la dirección y el teléfono antes de guardar.
+        // Encriptar dirección y teléfono antes de guardar.
         try {
-            KeystoreManager keystoreManager = new KeystoreManager();
+            KeystoreManager keystoreManager = new KeystoreManager(userId);
             String encryptedAddress = keystoreManager.encryptData(updatedAddress);
             String encryptedPhone = keystoreManager.encryptData(updatedPhone);
 
@@ -384,5 +405,6 @@ public class EditUserActivity extends AppCompatActivity {
             Toast.makeText(this, "Error al encriptar los datos", Toast.LENGTH_SHORT).show();
         }
     }
+
 
 }
