@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import edu.pmdm.gonzalez_victorimdbapp.database.FavoritesDatabaseHelper;
 import edu.pmdm.gonzalez_victorimdbapp.database.UsersManager;
 
 import java.util.Date;
@@ -170,54 +171,60 @@ public class FirebaseUsersSync {
      */
     public void syncUsersWithFirestore(UsersManager usersManager) {
         if (currentUser == null) {
-            System.err.println("No hay usuario autenticado.");
+            Log.e("FirebaseUsersSync", "No hay usuario autenticado.");
             return;
         }
 
         String userId = currentUser.getUid();
-
-        // Obtener datos locales
         Map<String, String> localUser = usersManager.getUser(userId);
 
-        if (localUser == null || localUser.isEmpty()) {
-            // Si la base de datos local está vacía, traer datos de Firestore
-            db.collection("users")
-                    .document(userId)
-                    .get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        if (documentSnapshot.exists()) {
-                            String name = documentSnapshot.getString("name");
-                            String email = documentSnapshot.getString("email");
-                            List<Map<String, Object>> activityLog =
-                                    (List<Map<String, Object>>) documentSnapshot.get("activity_log");
+        FirebaseFirestore.getInstance().collection("users")
+                .document(userId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    String name, email, address, phone, image;
 
-                            String loginTime = null;
-                            String logoutTime = null;
+                    // 🔹 1️⃣ Intentamos obtener el nombre desde Firestore
+                    name = documentSnapshot.exists() ? documentSnapshot.getString("name") : null;
 
-                            if (activityLog != null && !activityLog.isEmpty()) {
-                                Map<String, Object> lastEntry = activityLog.get(activityLog.size() - 1);
-                                loginTime = (String) lastEntry.get("login_time");
-                                logoutTime = (String) lastEntry.get("logout_time");
-                            }
-
-                            usersManager.addUser(
-                                    userId,
-                                    name,
-                                    email,
-                                    loginTime,
-                                    logoutTime,
-                                    null,  // address
-                                    null,  // phone
-                                    null   // image
-                            );
-
-                            System.out.println("Datos descargados de Firestore a local.");
+                    // 🔹 2️⃣ Si Firestore no tiene nombre, intentamos con Firebase Authentication (Google/Facebook)
+                    if (name == null || name.isEmpty()) {
+                        String firebaseName = currentUser.getDisplayName();
+                        if (firebaseName != null && !firebaseName.isEmpty()) {
+                            name = firebaseName; // 🔥 Usamos el nombre de Google/Facebook si está disponible
                         }
-                    })
-                    .addOnFailureListener(e -> System.err.println("Error sincronizando desde Firestore: " + e.getMessage()));
-        } else {
-            // Si hay datos locales, sincronizar con Firestore
-            syncCurrentUserToFirestore();
-        }
+                    }
+
+                    // 🔹 3️⃣ Si todavía no hay nombre, intentamos obtenerlo de SQLite
+                    if (name == null || name.isEmpty()) {
+                        name = localUser.getOrDefault(FavoritesDatabaseHelper.COLUMN_NAME, "Usuario");
+                    }
+
+                    // 🔹 4️⃣ Comprobamos si el nombre sigue en "Usuario", si es así, forzamos el valor desde SQLite
+                    if ("Usuario".equals(name) && localUser.containsKey(FavoritesDatabaseHelper.COLUMN_NAME)) {
+                        name = localUser.get(FavoritesDatabaseHelper.COLUMN_NAME);
+                    }
+
+                    email = documentSnapshot.exists() ? documentSnapshot.getString("email") : currentUser.getEmail();
+                    address = documentSnapshot.exists() ? documentSnapshot.getString("address") : localUser.getOrDefault(FavoritesDatabaseHelper.COLUMN_ADDRESS, "");
+                    phone = documentSnapshot.exists() ? documentSnapshot.getString("phone") : localUser.getOrDefault(FavoritesDatabaseHelper.COLUMN_PHONE, "");
+                    image = documentSnapshot.exists() ? documentSnapshot.getString("image") : "";
+
+                    if (image.isEmpty()) {
+                        image = currentUser.getPhotoUrl() != null ? currentUser.getPhotoUrl().toString() : "";
+                        image = localUser.getOrDefault(FavoritesDatabaseHelper.COLUMN_IMAGE, image);
+                    }
+
+                    Log.e("FirebaseUsersSync", "Nombre final a guardar: " + name); // 🛠 DEBUG
+
+                    // Guardamos los datos en SQLite
+                    usersManager.addUser(userId, name, email, null, null, address, phone, image);
+
+                    // Enviamos la actualización a Firestore (garantizando que se sobrescriba)
+                    syncBasicUserToFirestore(userId, name, email, address, phone, image);
+                })
+                .addOnFailureListener(e -> Log.e("FirebaseUsersSync", "Error sincronizando desde Firestore: " + e.getMessage()));
     }
+
+
 }
